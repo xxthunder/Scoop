@@ -1,16 +1,20 @@
-# Usage: scoop import <path/url to scoopfile.json>
+# Usage: scoop import <path/url to scoopfile.json> [options]
 # Summary: Imports apps, buckets and configs from a Scoopfile in JSON format
 # Help: To replicate a Scoop installation from a file stored on Desktop, run
 #      scoop import Desktop\scoopfile.json
+#
+# Options:
+#   -r, --reset                     Reset the app after installation
+#   -u, --update                    Update the app after installation
 
-param(
-    [Parameter(Mandatory)]
-    [String]
-    $scoopfile
-)
-
+. "$PSScriptRoot\..\lib\getopt.ps1"
 . "$PSScriptRoot\..\lib\manifest.ps1"
 
+$opt, $scoopfile, $err = getopt $args 'ru:' 'reset', 'update'
+if ($err) { "scoop import: $err"; exit 1 }
+
+$update = $opt.u -or $opt.update
+$reset = $opt.r -or $opt.reset
 $import = $null
 $bucket_names = @()
 $def_arch = Get-DefaultArchitecture
@@ -36,10 +40,12 @@ foreach ($item in $import.buckets) {
 foreach ($item in $import.apps) {
     $instArgs = @()
     $holdArgs = @()
+    $updateArgs = @()
     $info = $item.Info -Split ', '
     if ('Global install' -in $info) {
         $instArgs += '--global'
         $holdArgs += '--global'
+        $updateArgs += '--global'
     }
     if ('64bit' -in $info -and '64bit' -ne $def_arch) {
         $instArgs += '--arch', '64bit'
@@ -58,6 +64,14 @@ foreach ($item in $import.apps) {
     }
 
     & "$PSScriptRoot\scoop-install.ps1" $app @instArgs
+
+    if ($update) {
+        & "$PSScriptRoot\scoop-update.ps1" $app @updateArgs
+    }
+
+    if ($reset) {
+        & "$PSScriptRoot\scoop-reset.ps1" $app
+    }
 
     if ('Held package' -in $info) {
         & "$PSScriptRoot\scoop-hold.ps1" $item.Name @holdArgs
