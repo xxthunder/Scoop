@@ -91,10 +91,9 @@ $specific_versions_paths = $specific_versions | ForEach-Object {
     $app, $bucket, $version = parse_app $_
     if (installed_manifest $app $version) {
         warn "'$app' ($version) is already installed.`nUse 'scoop update $app$(if ($global) { " --global" })' to install a new version."
-        continue
+    } else {
+        generate_user_manifest $app $bucket $version
     }
-
-    generate_user_manifest $app $bucket $version
 }
 $apps = @(($specific_versions_paths + $difference) | Where-Object { $_ } | Sort-Object -Unique)
 
